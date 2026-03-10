@@ -1,15 +1,44 @@
-name: Deploy to Firebase Hosting on merge
+name: Deploy to Firebase on Production Push
 
 on:
   push:
     branches:
-      - main
+      - production
+
+permissions:
+  contents: read
 
 jobs:
-  build_and_deploy:
+  build_test_and_deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json found. Skipping dependency installation."
+          fi
+      - name: Run tests
+        run: |
+          if [ -f package.json ]; then
+            npm run test --if-present
+          else
+            echo "No package.json found. Skipping tests."
+          fi
+      - name: Build project
+        run: |
+          if [ -f package.json ]; then
+            npm run build --if-present
+          else
+            echo "No package.json found. Skipping build."
+          fi
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
